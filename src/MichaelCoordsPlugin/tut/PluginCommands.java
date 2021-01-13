@@ -18,6 +18,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PluginCommands extends JavaPlugin {
 
+    public static boolean sheetCommand(CommandSender sender, Command command, String label, String[] args) {
+        TextComponent message = new TextComponent("Click " + ChatColor.UNDERLINE + ChatColor.BOLD + ChatColor.YELLOW + "Here" + ChatColor.RESET + " to spreadsheet of coordinates");
+        message.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, "https://docs.google.com/spreadsheets/d/1NHLjmH-6B4OBlHohH8cbRWAbHeapjtxnS0HjE8t4j04/view"));
+        sender.spigot().sendMessage(message);
+        return true;
+    }
+
     public static boolean findCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations) {
         if (sender instanceof Player) {
             if (args.length == 1) {

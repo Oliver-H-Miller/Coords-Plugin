@@ -21,11 +21,16 @@ commands:
     permission: MichaelCoordsPlugin.basic
     permission-message: You don't have <permission>
   mysubmit:
-    description: Find all locations in a given radius
+    description: Submit a location to your private list
     usage: /mysubmit [radius]
     permission: MichaelCoordsPlugin.basic
     permission-message: You don't have <permission>
     aliases: [myadd]
+  sheet:
+    description: Gives a link to the sheet of coordinates
+    usage: /sheet
+    permission: MichaelCoordsPlugin.basic
+    permission-message: You don't have <permission>
 permissions:
   MichaelCoordsPlugin.basic:
     default: true

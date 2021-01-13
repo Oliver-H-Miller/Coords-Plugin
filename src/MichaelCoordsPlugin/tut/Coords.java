@@ -94,6 +94,8 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
             //noinspection SpellCheckingInspection
             case "mysubmit":
                 return PluginCommands.mySubmitCommand(sender, command, label, args, personalLocations);
+            case "sheet":
+                return PluginCommands.sheetCommand(sender, command, label, args);
             default:
                 return false;
         }
