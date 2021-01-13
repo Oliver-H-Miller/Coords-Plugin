@@ -2,6 +2,7 @@ name: MichaelCoordsPlugin
 main: MichaelCoordsPlugin.tut.Coords
 version: 0.0.1
 description: First Plugin
+api-version: 1.16
 commands:
   get:
     description: This is the get command.
@@ -24,7 +25,7 @@ commands:
     usage: /mysubmit [radius]
     permission: MichaelCoordsPlugin.basic
     permission-message: You don't have <permission>
-    [myadd]
+    aliases: [myadd]
 permissions:
   MichaelCoordsPlugin.basic:
     default: true
