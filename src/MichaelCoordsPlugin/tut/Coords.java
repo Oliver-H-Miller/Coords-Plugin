@@ -13,14 +13,18 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 public class Coords extends JavaPlugin implements TabCompleter, Listener {
 
     private static final HashMap<String, MinecraftLocation> locations = new HashMap<>();
     private static final ArrayList<String> locationNames = new ArrayList<>();
-    private static final HashMap<String, HashSet<MinecraftLocation>> personalLocations = new HashMap<>();
+    private static final HashMap<String, HashMap<String, MinecraftLocation>> personalLocations = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -47,9 +51,9 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
         getLogger().info(SheetCommunication.getContents(player.getUniqueId().toString()));
         JsonObject personalLocationData = new JsonParser().parse(SheetCommunication.getContents(player.getUniqueId().toString())).getAsJsonObject();
         JsonArray personalLocationArray = personalLocationData.getAsJsonArray("locations");
-        HashSet<MinecraftLocation> minecraftLocations = new HashSet<>();
+        HashMap<String, MinecraftLocation> minecraftLocations = new HashMap<>();
         for(int i=0; i<personalLocationArray.size(); i++) {
-            minecraftLocations.add(jsonToMinecraftLocation(personalLocationArray.get(i).getAsJsonObject()));
+            minecraftLocations.put(personalLocationArray.get(i).getAsJsonObject().get("name").toString(), jsonToMinecraftLocation(personalLocationArray.get(i).getAsJsonObject()));
         }
         personalLocations.put(player.getUniqueId().toString(), minecraftLocations);
     }
@@ -61,17 +65,27 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (command.getName().equalsIgnoreCase("get")) {
-            return locationNames;
+        switch (command.getName().toLowerCase()) {
+            case "get":
+                String uuid = ((Player) sender).getUniqueId().toString();
+                List<String> personalLocationsNames;
+                if(personalLocations.containsKey(uuid))
+                {
+                   personalLocationsNames = personalLocations.get(uuid).values().stream().map(MinecraftLocation::getName).collect(Collectors.toList());
+                   personalLocationsNames.addAll(locationNames);
+                   return personalLocationsNames;
+                }
+                return locationNames;
+            default:
+                return null;
         }
-        return null;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         switch (command.getName().toLowerCase()) {
             case "get":
-                return PluginCommands.getCommand(sender, command, label, args, locations);
+                return PluginCommands.getCommand(sender, command, label, args, locations, personalLocations.get(((Player) sender).getUniqueId().toString()));
             case "submit":
                 getLogger().info(Arrays.toString(args));
                 return PluginCommands.submitCommand(sender, command, label, args, locations, locationNames);
@@ -79,7 +93,7 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
                 return PluginCommands.findCommand(sender, command, label, args, locations);
             //noinspection SpellCheckingInspection
             case "mysubmit":
-                return PluginCommands.mySubmitCommand(sender, command, label, args);
+                return PluginCommands.mySubmitCommand(sender, command, label, args, personalLocations);
             default:
                 return false;
         }

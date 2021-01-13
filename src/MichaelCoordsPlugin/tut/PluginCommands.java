@@ -19,8 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class PluginCommands extends JavaPlugin {
 
     public static boolean findCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations) {
-        if(sender instanceof Player) {
-            if(args.length == 1) {
+        if (sender instanceof Player) {
+            if (args.length == 1) {
                 try {
                     double radius = Integer.parseInt(args[0]);
                     Player player = ((Player) sender);
@@ -32,7 +32,7 @@ public class PluginCommands extends JavaPlugin {
                             locationFound.set(true);
                         }
                     });
-                    if(!locationFound.get()) {
+                    if (!locationFound.get()) {
                         player.sendMessage(ChatColor.RED + "No landmark was found within " + (int) radius + " blocks of you");
                     }
                     return true;
@@ -50,22 +50,32 @@ public class PluginCommands extends JavaPlugin {
         }
     }
 
-    public static boolean getCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations) {
+    public static boolean getCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations, HashMap<String, MinecraftLocation> personalLocations) {
         ArrayList<String> multiwordArgs = getArguments(args);
+        int[] coords;
         if (multiwordArgs.size() > 0) {
             for (String arg : multiwordArgs) {
                 if (locations.containsKey(arg.toLowerCase())) {
-                    int[] coords = locations.get(arg.toLowerCase()).getCoords();
+                    coords = locations.get(arg.toLowerCase()).getCoords();
+                } else if (personalLocations.containsKey(arg.toLowerCase())) {
+                    coords = personalLocations.get(arg.toLowerCase()).getCoords();
+                } else {
+                    sender.sendMessage(ChatColor.RED + arg + " was not found");
+                    return true;
+                }
+                if(sender.isOp()) {
                     TextComponent message = new TextComponent("The coordinates of " + arg + " are " + ChatColor.DARK_GREEN + ChatColor.BOLD + ChatColor.UNDERLINE + coords[0] + ", " + coords[1] + ", " + coords[2]);
                     if (sender instanceof Player)
                         message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + sender.getName() + " " + coords[0] + " " + coords[1] + " " + coords[2]));
                     sender.spigot().sendMessage(message);
                 } else {
-                    sender.sendMessage(ChatColor.RED + arg + " was not found");
+                    sender.sendMessage("The coordinates of " + arg + " are " + ChatColor.DARK_GREEN + ChatColor.BOLD + ChatColor.UNDERLINE + coords[0] + ", " + coords[1] + ", " + coords[2]);
                 }
+                return true;
             }
         } else {
             sender.sendMessage(ChatColor.RED + " Please enter a location name");
+            return true;
         }
         return true;
     }
@@ -97,7 +107,7 @@ public class PluginCommands extends JavaPlugin {
         ArrayList<String> multiwordArgs = getArguments(args);
         Vector coords = getSubmitCoords(sender, multiwordArgs);
         sender.sendMessage(multiwordArgs.get(0));
-        if(!locations.containsKey(multiwordArgs.get(0))) {
+        if (!locations.containsKey(multiwordArgs.get(0))) {
             if (coords != null) {
                 try {
                     addLocation(locations, locationNames, sender, multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ());
@@ -116,12 +126,22 @@ public class PluginCommands extends JavaPlugin {
         }
     }
 
-    public static boolean mySubmitCommand(CommandSender sender, Command command, String label, String[] args) {
+    public static boolean mySubmitCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, HashMap<String, MinecraftLocation>> personalLocations) {
         ArrayList<String> multiwordArgs = getArguments(args);
         Vector coords = getSubmitCoords(sender, multiwordArgs);
-        if(coords != null) {
+        if (coords != null) {
             try {
                 SheetCommunication.sendPostRequest(locationToJsonString(multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ(), ((Player) sender).getUniqueId().toString()));
+                sender.sendMessage("Added " + multiwordArgs.get(0));
+                String uuid = ((Player) sender).getUniqueId().toString();
+                MinecraftLocation newLocation = new MinecraftLocation(multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ());
+                if(personalLocations.containsKey(uuid)) {
+                    personalLocations.get(uuid).put(multiwordArgs.get(0), newLocation);
+                } else {
+                    HashMap<String, MinecraftLocation> newPersonalLocations = new HashMap<>();
+                    newPersonalLocations.put(multiwordArgs.get(0), newLocation);
+                    personalLocations.put(uuid, newPersonalLocations);
+                }
             } catch (IOException e) {
                 sender.sendMessage(ChatColor.RED + e.getMessage());
             }
@@ -140,18 +160,15 @@ public class PluginCommands extends JavaPlugin {
             for (int i = 0; i < args.length; i++) {
                 if (args[i].indexOf("\"") == 0) {
                     if (args[i].substring(1).indexOf("\"") == args[i].length() - 2) {
-//                        multiwordArgs.add(args[i].substring(1, args[i].length() - 1));
                         multiwordArgs.add(args[i]);
                         continue;
                     }
-//                    stringSoFar += args[i].substring(1);
                     stringSoFar += args[i];
                     lookingForEnd = true;
                     continue;
                 }
                 if (lookingForEnd) {
                     if (args[i].indexOf("\"") == args[i].length() - 1) {
-//                        stringSoFar += " " + args[i].substring(0, args[i].length() - 1);
                         stringSoFar += " " + args[i];
                         lookingForEnd = false;
                         multiwordArgs.add(stringSoFar);
@@ -168,18 +185,18 @@ public class PluginCommands extends JavaPlugin {
     }
 
     private static void addLocation(HashMap<String, MinecraftLocation> locations, List<String> locationNames, CommandSender sender, String name, int xCoord, int yCoord, int zCoord) throws IOException {
-        sender.sendMessage(locations.keySet().toString());
-        SheetCommunication.sendPostRequest(locationToJsonString(name.replace("\"", ""), xCoord, yCoord, zCoord));
+        SheetCommunication.sendPostRequest(locationToJsonString(name, xCoord, yCoord, zCoord));
         locations.put(name.toLowerCase(), new MinecraftLocation(name, xCoord, yCoord, zCoord));
         locationNames.add(name);
-//            locationNames.add("\"" + name + "\"");
     }
 
     private static String locationToJsonString(String name, int x, int y, int z) {
+        name = name.replace("\"", "");
         return "{\"newLocation\":{\"name\":\"" + name + "\",\"xCoord\":" + x + ",\"yCoord\":" + y + ",\"zCoord\":" + z + "}}";
     }
 
     private static String locationToJsonString(String name, int x, int y, int z, String uuid) {
-        return "{\"newLocation\":{\"name\":\"" + name + "\",\"xCoord\":" + x + ",\"yCoord\":" + y + ",\"zCoord\":" + z + "},\"uuid\":\""+ uuid + "\"}";
+        name = name.replace("\"", "");
+        return "{\"newLocation\":{\"name\":\"" + name + "\",\"xCoord\":" + x + ",\"yCoord\":" + y + ",\"zCoord\":" + z + "},\"uuid\":\"" + uuid + "\"}";
     }
 }
