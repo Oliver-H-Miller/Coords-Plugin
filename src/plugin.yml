@@ -1,0 +1,28 @@
+name: MichaelCoordsPlugin
+main: MichaelCoordsPlugin.tut.Coords
+version: 0.0.1
+description: First Plugin
+commands:
+  get:
+    description: This is the get command.
+    usage: /get ["First Location" "Second Location"...]
+    permission: MichaelCoordsPlugin.basic
+    permission-message: You don't have <permission>
+  submit:
+    description: Submit a new location
+    usage: /submit [optional location]
+    permission: MichaelCoordsPlugin.basic
+    permission-message: You don't have <permission>
+  find:
+    description: Find all locations in a given radius
+    usage: /find [radius]
+    permission: MichaelCoordsPlugin.basic
+    permission-message: You don't have <permission>
+  mysubmit:
+    description: Find all locations in a given radius
+    usage: /mysubmit [radius]
+    permission: MichaelCoordsPlugin.basic
+    permission-message: You don't have <permission>
+permissions:
+  MichaelCoordsPlugin.basic:
+    default: true
