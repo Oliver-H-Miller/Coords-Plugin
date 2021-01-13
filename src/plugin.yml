@@ -13,6 +13,7 @@ commands:
     usage: /submit [optional location]
     permission: MichaelCoordsPlugin.basic
     permission-message: You don't have <permission>
+    aliases: [add]
   find:
     description: Find all locations in a given radius
     usage: /find [radius]
@@ -23,6 +24,7 @@ commands:
     usage: /mysubmit [radius]
     permission: MichaelCoordsPlugin.basic
     permission-message: You don't have <permission>
+    [myadd]
 permissions:
   MichaelCoordsPlugin.basic:
     default: true
