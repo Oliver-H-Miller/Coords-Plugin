@@ -72,7 +72,6 @@ public class PluginCommands extends JavaPlugin {
 
     private static Vector getSubmitCoords(CommandSender sender, ArrayList<String> multiwordArgs) {
         try {
-            String name;
             int xCoord;
             int yCoord;
             int zCoord;
@@ -80,7 +79,6 @@ public class PluginCommands extends JavaPlugin {
                 Location playerLocation = ((Player) sender).getLocation();
                 return playerLocation.toVector();
             } else if (multiwordArgs.size() == 4 && sender instanceof Player) {
-                name = "\"" + multiwordArgs.get(0) + "\"";
                 xCoord = Integer.parseInt(multiwordArgs.get(1));
                 yCoord = Integer.parseInt(multiwordArgs.get(2));
                 zCoord = Integer.parseInt(multiwordArgs.get(3));
@@ -98,24 +96,29 @@ public class PluginCommands extends JavaPlugin {
     public static boolean submitCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations, List<String> locationNames) {
         ArrayList<String> multiwordArgs = getArguments(args);
         Vector coords = getSubmitCoords(sender, multiwordArgs);
-        if(coords != null) {
-            try {
-                addLocation(locations, locationNames, sender, multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ());
-                sender.sendMessage("Added " + multiwordArgs.get(0));
-            } catch (IOException e) {
-                sender.sendMessage(ChatColor.RED + e.getMessage());
+        sender.sendMessage(multiwordArgs.get(0));
+        if(!locations.containsKey(multiwordArgs.get(0))) {
+            if (coords != null) {
+                try {
+                    addLocation(locations, locationNames, sender, multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ());
+                    sender.sendMessage("Added " + multiwordArgs.get(0));
+                } catch (IOException e) {
+                    sender.sendMessage(ChatColor.RED + e.getMessage());
+                }
+                return true;
+            } else {
+                sender.sendMessage(ChatColor.RED + " Please enter a name followed by 3 integers (no decimals");
+                return false;
             }
-            return true;
         } else {
-            sender.sendMessage(ChatColor.RED + " Please enter a name followed by 3 integers (no decimals");
-            return false;
+            sender.sendMessage(ChatColor.RED + "Sorry, that name has already been taken");
+            return true;
         }
     }
 
     public static boolean mySubmitCommand(CommandSender sender, Command command, String label, String[] args) {
         ArrayList<String> multiwordArgs = getArguments(args);
         Vector coords = getSubmitCoords(sender, multiwordArgs);
-        sender.sendMessage(coords.toString() + " asfd");
         if(coords != null) {
             try {
                 SheetCommunication.sendPostRequest(locationToJsonString(multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ(), ((Player) sender).getUniqueId().toString()));
@@ -137,16 +140,19 @@ public class PluginCommands extends JavaPlugin {
             for (int i = 0; i < args.length; i++) {
                 if (args[i].indexOf("\"") == 0) {
                     if (args[i].substring(1).indexOf("\"") == args[i].length() - 2) {
-                        multiwordArgs.add(args[i].substring(1, args[i].length() - 1));
+//                        multiwordArgs.add(args[i].substring(1, args[i].length() - 1));
+                        multiwordArgs.add(args[i]);
                         continue;
                     }
-                    stringSoFar += args[i].substring(1);
+//                    stringSoFar += args[i].substring(1);
+                    stringSoFar += args[i];
                     lookingForEnd = true;
                     continue;
                 }
                 if (lookingForEnd) {
                     if (args[i].indexOf("\"") == args[i].length() - 1) {
-                        stringSoFar += " " + args[i].substring(0, args[i].length() - 1);
+//                        stringSoFar += " " + args[i].substring(0, args[i].length() - 1);
+                        stringSoFar += " " + args[i];
                         lookingForEnd = false;
                         multiwordArgs.add(stringSoFar);
                         stringSoFar = "";
@@ -162,14 +168,11 @@ public class PluginCommands extends JavaPlugin {
     }
 
     private static void addLocation(HashMap<String, MinecraftLocation> locations, List<String> locationNames, CommandSender sender, String name, int xCoord, int yCoord, int zCoord) throws IOException {
-        if (!locations.containsKey(name)) {
-            SheetCommunication.sendPostRequest(locationToJsonString(name, xCoord, yCoord, zCoord));
-            locations.put(name.toLowerCase(), new MinecraftLocation(name, xCoord, yCoord, zCoord));
-
-            locationNames.add("\"" + name + "\"");
-        } else {
-            sender.sendMessage(ChatColor.RED + "Sorry, that name has already been taken");
-        }
+        sender.sendMessage(locations.keySet().toString());
+        SheetCommunication.sendPostRequest(locationToJsonString(name.replace("\"", ""), xCoord, yCoord, zCoord));
+        locations.put(name.toLowerCase(), new MinecraftLocation(name, xCoord, yCoord, zCoord));
+        locationNames.add(name);
+//            locationNames.add("\"" + name + "\"");
     }
 
     private static String locationToJsonString(String name, int x, int y, int z) {

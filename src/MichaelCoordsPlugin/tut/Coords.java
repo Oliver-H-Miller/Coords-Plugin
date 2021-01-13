@@ -28,7 +28,7 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
         JsonArray locationArray = locationData.getAsJsonArray("locations");
         for (int i = 0; i < locationArray.size(); i++) {
             MinecraftLocation location = jsonToMinecraftLocation(locationArray.get(i).getAsJsonObject());
-            locations.put(location.getName().toLowerCase().replace("\"", ""), location);
+            locations.put(location.getName().toLowerCase(), location);
             locationNames.add(location.getName());
         }
         for (Player player: Bukkit.getServer().getOnlinePlayers()) {
@@ -40,13 +40,11 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent evt) {
         Player player = evt.getPlayer();
-        player.sendMessage("Loading Locations...");
         getLocationsFromPlayer(player);
-        player.sendMessage("Locations Loaded");
     }
 
     private void getLocationsFromPlayer(Player player) {
-        player.sendMessage(SheetCommunication.getContents(player.getUniqueId().toString()));
+        getLogger().info(SheetCommunication.getContents(player.getUniqueId().toString()));
         JsonObject personalLocationData = new JsonParser().parse(SheetCommunication.getContents(player.getUniqueId().toString())).getAsJsonObject();
         JsonArray personalLocationArray = personalLocationData.getAsJsonArray("locations");
         HashSet<MinecraftLocation> minecraftLocations = new HashSet<>();
