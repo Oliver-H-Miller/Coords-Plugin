@@ -13,7 +13,6 @@ import org.bukkit.util.Vector;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PluginCommands extends JavaPlugin {
@@ -25,7 +24,7 @@ public class PluginCommands extends JavaPlugin {
         return true;
     }
 
-    public static boolean findCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations) {
+    public static boolean findCommand(CommandSender sender, Command command, String label, String[] args, LocationStorage locationStorage) {
         if (sender instanceof Player) {
             if (args.length == 1) {
                 try {
@@ -33,7 +32,7 @@ public class PluginCommands extends JavaPlugin {
                     Player player = ((Player) sender);
                     Location location = player.getLocation();
                     AtomicBoolean locationFound = new AtomicBoolean(false);
-                    locations.forEach((name, MineLocal) -> {
+                    locationStorage.getLocations().forEach((name, MineLocal) -> {
                         if (location.distance(new Location(location.getWorld(), MineLocal.getXcoord(), MineLocal.getYcoord(), MineLocal.getZcoord())) <= radius) {
                             player.sendMessage(MineLocal.getName());
                             locationFound.set(true);
@@ -57,15 +56,16 @@ public class PluginCommands extends JavaPlugin {
         }
     }
 
-    public static boolean getCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations, HashMap<String, MinecraftLocation> personalLocations) {
+    public static boolean getCommand(CommandSender sender, Command command, String label, String[] args, LocationStorage locationStorage) {
+        //personalLocations.get(((Player) sender).getUniqueId().toString())
+
         ArrayList<String> multiwordArgs = getArguments(args);
         int[] coords;
         if (multiwordArgs.size() > 0) {
             for (String arg : multiwordArgs) {
-                if (locations.containsKey(arg.toLowerCase())) {
-                    coords = locations.get(arg.toLowerCase()).getCoords();
-                } else if (personalLocations.containsKey(arg.toLowerCase())) {
-                    coords = personalLocations.get(arg.toLowerCase()).getCoords();
+                MinecraftLocation location = locationStorage.getLocationFromName(arg.toLowerCase(), ((Player) sender).getUniqueId());
+                if (location != null) {
+                    coords = location.getCoords();
                 } else {
                     sender.sendMessage(ChatColor.RED + arg + " was not found");
                     return true;
@@ -110,14 +110,14 @@ public class PluginCommands extends JavaPlugin {
         }
     }
 
-    public static boolean submitCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, MinecraftLocation> locations, List<String> locationNames) {
+    public static boolean submitCommand(CommandSender sender, Command command, String label, String[] args, LocationStorage locationStorage) {
         ArrayList<String> multiwordArgs = getArguments(args);
         Vector coords = getSubmitCoords(sender, multiwordArgs);
         sender.sendMessage(multiwordArgs.get(0));
-        if (!locations.containsKey(multiwordArgs.get(0))) {
+        if (!locationStorage.checkNameExists(multiwordArgs.get(0))) {
             if (coords != null) {
                 try {
-                    addLocation(locations, locationNames, sender, multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ());
+                    addLocation(sender, multiwordArgs.get(0), coords, locationStorage);
                     sender.sendMessage("Added " + multiwordArgs.get(0));
                 } catch (IOException e) {
                     sender.sendMessage(ChatColor.RED + e.getMessage());
@@ -133,29 +133,34 @@ public class PluginCommands extends JavaPlugin {
         }
     }
 
-    public static boolean mySubmitCommand(CommandSender sender, Command command, String label, String[] args, HashMap<String, HashMap<String, MinecraftLocation>> personalLocations) {
+    public static boolean mySubmitCommand(CommandSender sender, Command command, String label, String[] args, LocationStorage locationStorage) {
         ArrayList<String> multiwordArgs = getArguments(args);
         Vector coords = getSubmitCoords(sender, multiwordArgs);
-        if (coords != null) {
-            try {
-                SheetCommunication.sendPostRequest(locationToJsonString(multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ(), ((Player) sender).getUniqueId().toString()));
-                sender.sendMessage("Added " + multiwordArgs.get(0));
-                String uuid = ((Player) sender).getUniqueId().toString();
-                MinecraftLocation newLocation = new MinecraftLocation(multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ());
-                if(personalLocations.containsKey(uuid)) {
-                    personalLocations.get(uuid).put(multiwordArgs.get(0), newLocation);
-                } else {
-                    HashMap<String, MinecraftLocation> newPersonalLocations = new HashMap<>();
-                    newPersonalLocations.put(multiwordArgs.get(0), newLocation);
-                    personalLocations.put(uuid, newPersonalLocations);
+        if(!locationStorage.checkNameExists(multiwordArgs.get(0))) {
+            if (coords != null) {
+                try {
+                    SheetCommunication.sendPostRequest(locationToJsonString(multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ(), ((Player) sender).getUniqueId().toString()));
+                    sender.sendMessage("Added " + multiwordArgs.get(0));
+                    String uuid = ((Player) sender).getUniqueId().toString();
+                    MinecraftLocation newLocation = new MinecraftLocation(multiwordArgs.get(0), coords.getBlockX(), coords.getBlockY(), coords.getBlockZ());
+                    if (locationStorage.getPersonalLocations().containsKey(uuid)) {
+                        locationStorage.getPersonalLocations().get(uuid).put(multiwordArgs.get(0).toLowerCase(), newLocation);
+                    } else {
+                        HashMap<String, MinecraftLocation> newPersonalLocations = new HashMap<>();
+                        newPersonalLocations.put(multiwordArgs.get(0).toLowerCase(), newLocation);
+                        locationStorage.getPersonalLocations().put(uuid, newPersonalLocations);
+                    }
+                } catch (IOException e) {
+                    sender.sendMessage(ChatColor.RED + e.getMessage());
                 }
-            } catch (IOException e) {
-                sender.sendMessage(ChatColor.RED + e.getMessage());
+                return true;
+            } else {
+                sender.sendMessage(ChatColor.RED + " Please enter a name followed by 3 integers (no decimals");
+                return false;
             }
-            return true;
         } else {
-            sender.sendMessage(ChatColor.RED + " Please enter a name followed by 3 integers (no decimals");
-            return false;
+            sender.sendMessage(ChatColor.RED + "Sorry, that name has already been taken");
+            return true;
         }
     }
 
@@ -191,10 +196,10 @@ public class PluginCommands extends JavaPlugin {
         return multiwordArgs;
     }
 
-    private static void addLocation(HashMap<String, MinecraftLocation> locations, List<String> locationNames, CommandSender sender, String name, int xCoord, int yCoord, int zCoord) throws IOException {
-        SheetCommunication.sendPostRequest(locationToJsonString(name, xCoord, yCoord, zCoord));
-        locations.put(name.toLowerCase(), new MinecraftLocation(name, xCoord, yCoord, zCoord));
-        locationNames.add(name);
+    private static void addLocation(CommandSender sender, String name, Vector coords, LocationStorage locationStorage) throws IOException {
+        SheetCommunication.sendPostRequest(locationToJsonString(name, coords.getBlockX(), coords.getBlockY(), coords.getBlockZ()));
+        locationStorage.getLocations().put(name.toLowerCase(), new MinecraftLocation(name, coords.getBlockX(), coords.getBlockY(), coords.getBlockZ()));
+        locationStorage.getLocationNames().add(name);
     }
 
     private static String locationToJsonString(String name, int x, int y, int z) {
@@ -206,4 +211,6 @@ public class PluginCommands extends JavaPlugin {
         name = name.replace("\"", "");
         return "{\"newLocation\":{\"name\":\"" + name + "\",\"xCoord\":" + x + ",\"yCoord\":" + y + ",\"zCoord\":" + z + "},\"uuid\":\"" + uuid + "\"}";
     }
+
+
 }

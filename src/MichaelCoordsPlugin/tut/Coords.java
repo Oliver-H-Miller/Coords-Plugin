@@ -22,9 +22,11 @@ import java.util.stream.Collectors;
 
 public class Coords extends JavaPlugin implements TabCompleter, Listener {
 
-    private static final HashMap<String, MinecraftLocation> locations = new HashMap<>();
-    private static final ArrayList<String> locationNames = new ArrayList<>();
-    private static final HashMap<String, HashMap<String, MinecraftLocation>> personalLocations = new HashMap<>();
+    private static final LocationStorage locationStorage = new LocationStorage();
+
+    private static final HashMap<String, MinecraftLocation> locations = locationStorage.getLocations();
+    private static final ArrayList<String> locationNames = locationStorage.getLocationNames();
+    private static final HashMap<String, HashMap<String, MinecraftLocation>> personalLocations = locationStorage.getPersonalLocations();
 
     @Override
     public void onEnable() {
@@ -85,15 +87,15 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         switch (command.getName().toLowerCase()) {
             case "get":
-                return PluginCommands.getCommand(sender, command, label, args, locations, personalLocations.get(((Player) sender).getUniqueId().toString()));
+                return PluginCommands.getCommand(sender, command, label, args, locationStorage);
             case "submit":
                 getLogger().info(Arrays.toString(args));
-                return PluginCommands.submitCommand(sender, command, label, args, locations, locationNames);
+                return PluginCommands.submitCommand(sender, command, label, args, locationStorage);
             case "find":
-                return PluginCommands.findCommand(sender, command, label, args, locations);
+                return PluginCommands.findCommand(sender, command, label, args, locationStorage);
             //noinspection SpellCheckingInspection
             case "mysubmit":
-                return PluginCommands.mySubmitCommand(sender, command, label, args, personalLocations);
+                return PluginCommands.mySubmitCommand(sender, command, label, args, locationStorage);
             case "sheet":
                 return PluginCommands.sheetCommand(sender, command, label, args);
             default:
