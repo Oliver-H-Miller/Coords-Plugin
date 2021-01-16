@@ -3,11 +3,15 @@ package MichaelCoordsPlugin.tut;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
+import org.bukkit.Color;
 import org.bukkit.Location;
+import org.bukkit.Particle;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.io.IOException;
@@ -56,9 +60,7 @@ public class PluginCommands extends JavaPlugin {
         }
     }
 
-    public static boolean getCommand(CommandSender sender, Command command, String label, String[] args, LocationStorage locationStorage) {
-        //personalLocations.get(((Player) sender).getUniqueId().toString())
-
+    public static boolean getCommand(CommandSender sender, Command command, String label, String[] args, LocationStorage locationStorage, Plugin plugin) {
         ArrayList<String> multiwordArgs = getArguments(args);
         int[] coords;
         if (multiwordArgs.size() > 0) {
@@ -78,6 +80,7 @@ public class PluginCommands extends JavaPlugin {
                 } else {
                     sender.sendMessage("The coordinates of " + arg + " are " + ChatColor.DARK_GREEN + ChatColor.BOLD + ChatColor.UNDERLINE + coords[0] + ", " + coords[1] + ", " + coords[2]);
                 }
+                spawnParticleTrail(sender, new Location(((Player) sender).getWorld(), coords[0], coords[1], coords[2]), plugin);
                 return true;
             }
         } else {
@@ -212,5 +215,31 @@ public class PluginCommands extends JavaPlugin {
         return "{\"newLocation\":{\"name\":\"" + name + "\",\"xCoord\":" + x + ",\"yCoord\":" + y + ",\"zCoord\":" + z + "},\"uuid\":\"" + uuid + "\"}";
     }
 
+    private static void spawnParticleTrail(CommandSender sender, Location destination, Plugin plugin) {
+        final Player player = ((Player) sender);
+        final Particle.DustOptions dust = new Particle.DustOptions(Color.fromRGB(52, 235, 97), 1);
+        final Vector direc = destination.clone().subtract(player.getLocation()).toVector().normalize();
+        destination.add(0, 1, 0);
+        new BukkitRunnable(){
+            int t = 0;
+            final Location playerLocation = player.getLocation().add(0, 1, 0);
+            @Override
+            public void run() {
+                Location locationCopy = playerLocation.clone();
+                for (int i=0; i<15; i++) {
+                    if(locationCopy.distance(destination) > 2) {
+                        locationCopy.add(direc);
+                        player.spawnParticle(Particle.REDSTONE, locationCopy, 1, 0, 0, 0, dust);
+                    } else {
+                        player.spawnParticle(Particle.REDSTONE, destination, 5, 0, 0, 0, new Particle.DustOptions(Color.fromRGB(235, 58, 52), 1));
+                    }
+                }
+                if(t>25) {
+                    this.cancel();
+                }
+                t++;
+            }
+        }.runTaskTimer(plugin, 0, 2);
+    }
 
 }

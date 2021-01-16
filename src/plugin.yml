@@ -31,6 +31,11 @@ commands:
     usage: /sheet
     permission: MichaelCoordsPlugin.basic
     permission-message: You don't have <permission>
+  particleTest:
+    description: Gives a link to the sheet of coordinates
+    usage: /particleTest
+    permission: MichaelCoordsPlugin.basic
+    permission-message: You don't have <permission>
 permissions:
   MichaelCoordsPlugin.basic:
     default: true

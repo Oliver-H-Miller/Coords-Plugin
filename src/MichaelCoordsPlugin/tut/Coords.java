@@ -50,7 +50,6 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
     }
 
     private void getLocationsFromPlayer(Player player) {
-        getLogger().info(SheetCommunication.getContents(player.getUniqueId().toString()));
         JsonObject personalLocationData = new JsonParser().parse(SheetCommunication.getContents(player.getUniqueId().toString())).getAsJsonObject();
         JsonArray personalLocationArray = personalLocationData.getAsJsonArray("locations");
         HashMap<String, MinecraftLocation> minecraftLocations = new HashMap<>();
@@ -87,13 +86,12 @@ public class Coords extends JavaPlugin implements TabCompleter, Listener {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         switch (command.getName().toLowerCase()) {
             case "get":
-                return PluginCommands.getCommand(sender, command, label, args, locationStorage);
+                return PluginCommands.getCommand(sender, command, label, args, locationStorage, this);
             case "submit":
                 getLogger().info(Arrays.toString(args));
                 return PluginCommands.submitCommand(sender, command, label, args, locationStorage);
             case "find":
                 return PluginCommands.findCommand(sender, command, label, args, locationStorage);
-            //noinspection SpellCheckingInspection
             case "mysubmit":
                 return PluginCommands.mySubmitCommand(sender, command, label, args, locationStorage);
             case "sheet":
